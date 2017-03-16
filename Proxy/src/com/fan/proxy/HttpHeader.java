@@ -9,7 +9,6 @@ import java.util.regex.Pattern;
 
 /**
  * 解析头部信息
- *
  */
 public final class HttpHeader {
 
@@ -35,10 +34,6 @@ public final class HttpHeader {
 
 	/**
 	 * 从数据流中读取请求头部信息，必须在放在流开启之后，任何数据读取之前
-	 * 
-	 * @param in
-	 * @return
-	 * @throws IOException
 	 */
 	public static final HttpHeader readHeader(InputStream in) throws IOException {
 		HttpHeader header = new HttpHeader();

@@ -22,41 +22,27 @@ public class ProxyTask implements Runnable {
 		this.socketIn = socket;
 	}
 
-	//private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 	/** 已连接到请求的服务器 */
 	private static final String AUTHORED = "HTTP/1.1 200 Connection established\r\n\r\n";
 	/** 本代理登陆失败(此应用暂时不涉及登陆操作) */
-	// private static final String UNAUTHORED="HTTP/1.1 407
-	// Unauthorized\r\n\r\n";
+	// private static final String UNAUTHORED="HTTP/1.1 407 Unauthorized\r\n\r\n";
 	/** 内部错误 */
 	private static final String SERVERERROR = "HTTP/1.1 500 Connection FAILED\r\n\r\n";
 
 	@Override
 	public void run() {
 
-		//StringBuilder builder = new StringBuilder();
 		try {
-			//builder.append("\r\n").append("Request Time  ：" + sdf.format(new Date()));
-
 			InputStream isIn = socketIn.getInputStream();
 			OutputStream osIn = socketIn.getOutputStream();
 			// 从客户端流数据中读取头部，获得请求主机和端口
 			HttpHeader header = HttpHeader.readHeader(isIn);
-
-			// 添加请求日志信息
-			/*builder.append("\r\n").append("From    Host  ：" + socketIn.getInetAddress());
-			builder.append("\r\n").append("From    Port  ：" + socketIn.getPort());
-			builder.append("\r\n").append("Proxy   Method：" + header.getMethod());
-			builder.append("\r\n").append("Request Host  ：" + header.getHost());
-			builder.append("\r\n").append("Request Port  ：" + header.getPort());*/
-
 			// 如果没解析出请求请求地址和端口，则返回错误信息
 			if (header.getHost() == null || header.getPort() == null) {
 				osIn.write(SERVERERROR.getBytes());
 				osIn.flush();
 				return;
 			}
-
 			// 查找主机和端口
 			if (HttpHeader.METHOD_CONNECT.equalsIgnoreCase(header.getMethod())) {
 				socketOut = new Socket(conf.getHttps_ip(), Integer.parseInt(conf.getHttps_port()));
@@ -77,16 +63,13 @@ public class ProxyTask implements Runnable {
 				// 将已联通信号返回给请求页面
 				osIn.write(AUTHORED.getBytes());
 				osIn.flush();
-			} else {
-				// http请求需要将请求头部也转发出去
-				byte[] headerData = header.toString().getBytes();
-				totalUpload += headerData.length;
-				logRequestMsg("1: " + totalUpload);
-				osOut.write(headerData);
-				osOut.flush();
 			}
-			// 读取客户端请求过来的数据转发给服务器
-			//readForwardDate(isIn, osOut);
+			// 转发头消息
+			byte[] headerData = header.toString().getBytes();
+			totalUpload += headerData.length;
+			logRequestMsg("OutData: " + totalUpload);
+			osOut.write(headerData);
+			osOut.flush();
 			// 等待向客户端转发的线程结束
 			ot.join();
 		} catch (Exception e) {
@@ -95,8 +78,7 @@ public class ProxyTask implements Runnable {
 				// 如果还可以返回错误状态的话，返回内部错误
 				try {
 					socketIn.getOutputStream().write(SERVERERROR.getBytes());
-				} catch (IOException e1) {
-				}
+				} catch (IOException e1) {}
 			}
 		} finally {
 			try {
@@ -124,35 +106,6 @@ public class ProxyTask implements Runnable {
 	}
 
 	/**
-	 * 读取客户端发送过来的数据，发送给服务器端
-	 * 
-	 * @param isIn
-	 * @param osOut
-	 */
-	private void readForwardDate(InputStream isIn, OutputStream osOut) {
-		byte[] buffer = new byte[4096];
-		try {
-			int len;
-			while ((len = isIn.read(buffer)) != -1) {
-				if (len > 0) {
-					osOut.write(buffer, 0, len);
-					osOut.flush();
-				}
-				totalUpload += len;
-				if (socketIn.isClosed() || socketOut.isClosed()) {
-					break;
-				}
-			}
-			logRequestMsg("2: " + totalUpload);
-		} catch (Exception e) {
-			try {
-				socketOut.close();// 尝试关闭远程服务器连接，中断转发线程的读阻塞状态
-			} catch (IOException e1) {
-			}
-		}
-	}
-
-	/**
 	 * 将服务器端返回的数据转发给客户端
 	 * 
 	 * @param isOut
@@ -174,7 +127,6 @@ public class ProxyTask implements Runnable {
 				int len;
 				while ((len = isOut.read(buffer)) != -1) {
 					if (len > 0) {
-						// logData(buffer, 0, len);
 						osIn.write(buffer, 0, len);
 						osIn.flush();
 						totalDownload += len;
@@ -183,7 +135,7 @@ public class ProxyTask implements Runnable {
 						break;
 					}
 				}
-				logRequestMsg("000: " + totalDownload);
+				logRequestMsg("InData: " + totalDownload);
 			} catch (Exception e) {
 			}
 		}
