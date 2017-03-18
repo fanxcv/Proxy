@@ -5,14 +5,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.util.Date;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * 将客户端发送过来的数据转发给请求的服务器端，并将服务器返回的数据转发给客户端
- *
- */
 public class ProxyTask extends Utils implements Runnable {
 	private Socket socketIn;
 	private Socket socketOut;
@@ -25,9 +20,6 @@ public class ProxyTask extends Utils implements Runnable {
 
 	private StringBuffer header = null;
 
-	private long totalUpload = 0l;// 总计上行比特数
-	private long totalDownload = 0l;// 总计下行比特数
-
 	public ProxyTask(Socket socket) {
 		this.socketIn = socket;
 	}
@@ -35,9 +27,9 @@ public class ProxyTask extends Utils implements Runnable {
 	@Override
 	public void run() {
 
-		StringBuilder builder = new StringBuilder();
+		//StringBuilder builder = new StringBuilder();
 		try {
-			builder.append("\r\n").append("Request Time  ：" + sdf.format(new Date()));
+			//builder.append("\r\n").append("Request Time  ：" + sdf.format(new Date()));
 
 			InputStream isIn = socketIn.getInputStream();
 			OutputStream osIn = socketIn.getOutputStream();
@@ -45,12 +37,12 @@ public class ProxyTask extends Utils implements Runnable {
 			HeaderProcess(isIn);
 
 			// 添加请求日志信息
-			builder.append("\r\n").append("Request Header：" + header);
+			/*builder.append("\r\n").append("Request Header：" + header);
 			builder.append("\r\n").append("From    Host  ：" + socketIn.getInetAddress());
 			builder.append("\r\n").append("From    Port  ：" + socketIn.getPort());
 			builder.append("\r\n").append("Proxy   Method：" + method);
 			builder.append("\r\n").append("Request Host  ：" + host);
-			builder.append("\r\n").append("Request Port  ：" + port);
+			builder.append("\r\n").append("Request Port  ：" + port);*/
 
 			// 如果没解析出请求请求地址和端口，则返回错误信息
 			if (host == null || port == null) {
@@ -59,7 +51,6 @@ public class ProxyTask extends Utils implements Runnable {
 				return;
 			}
 
-			// 查找主机和端口
 			if (METHOD_CONNECT.equals(method)) {
 				socketOut = new Socket(host, Integer.parseInt(port));
 			} else {
@@ -79,14 +70,12 @@ public class ProxyTask extends Utils implements Runnable {
 				osIn.flush();
 			} else {
 				byte[] headerData = header.toString().getBytes();
-				totalUpload += headerData.length;
 				osOut.write(headerData);
 				osOut.flush();
 			}
 			readForwardDate(isIn, osOut);
 			ot.join();
 		} catch (Exception e) {
-			// e.printStackTrace();
 			if (!socketIn.isOutputShutdown()) {
 				// 如果还可以返回错误状态的话，返回内部错误
 				try {
@@ -105,28 +94,16 @@ public class ProxyTask extends Utils implements Runnable {
 			} catch (IOException e) {
 			}
 			// 纪录上下行数据量和最后结束时间并打印
-			builder.append("\r\n").append("Up    Bytes  ：" + totalUpload);
+			/*builder.append("\r\n").append("Up    Bytes  ：" + totalUpload);
 			builder.append("\r\n").append("Down  Bytes  ：" + totalDownload);
 			builder.append("\r\n").append("Closed Time  ：" + sdf.format(new Date()));
 			builder.append("\r\n");
-			logRequestMsg(builder.toString());
+			logRequestMsg(builder.toString());*/
 		}
 	}
 
 	/**
-	 * 避免多线程竞争把日志打串行了
-	 * 
-	 * @param msg
-	 */
-	private synchronized void logRequestMsg(String msg) {
-		System.out.println(msg);
-	}
-
-	/**
 	 * 读取客户端发送过来的数据，发送给服务器端
-	 * 
-	 * @param isIn
-	 * @param osOut
 	 */
 	private void readForwardDate(InputStream isIn, OutputStream osOut) {
 		byte[] buffer = new byte[4096];
@@ -137,7 +114,6 @@ public class ProxyTask extends Utils implements Runnable {
 					osOut.write(buffer, 0, len);
 					osOut.flush();
 				}
-				totalUpload += len;
 				if (socketIn.isClosed() || socketOut.isClosed()) {
 					break;
 				}
@@ -152,9 +128,6 @@ public class ProxyTask extends Utils implements Runnable {
 
 	/**
 	 * 将服务器端返回的数据转发给客户端
-	 * 
-	 * @param isOut
-	 * @param osIn
 	 */
 	class DataSendThread extends Thread {
 		private InputStream isOut;
@@ -172,10 +145,8 @@ public class ProxyTask extends Utils implements Runnable {
 				int len;
 				while ((len = isOut.read(buffer)) != -1) {
 					if (len > 0) {
-						// logData(buffer, 0, len);
 						osIn.write(buffer, 0, len);
 						osIn.flush();
-						totalDownload += len;
 					}
 					if (socketIn.isOutputShutdown() || socketOut.isClosed()) {
 						break;
@@ -191,8 +162,8 @@ public class ProxyTask extends Utils implements Runnable {
 		header = new StringBuffer();
 		BufferedReader br = new BufferedReader(new InputStreamReader(in));
 		if (!isEmpty(line = br.readLine())) {
-			// 如能识别出请求方式则则继续，不能则退出
 			addHeaderMethod(line);
+			// 如能识别出请求方式则则继续，不能则退出
 			if (!isEmpty(method)) {
 				while (!isEmpty(line = br.readLine())) {
 					addHeaderString(line);

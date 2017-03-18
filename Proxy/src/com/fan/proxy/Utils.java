@@ -23,8 +23,8 @@ public class Utils {
 	
 	/**
 	 * 避免多线程竞争把日志打串行了
-	 *//*
+	 */
 	public static synchronized void logRequestMsg(String msg) {
 		System.out.println(msg);
-	}*/
+	}
 }
