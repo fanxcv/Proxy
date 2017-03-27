@@ -1,4 +1,5 @@
 package com.fan.proxy;
+
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,6 +23,7 @@ public class SocketProxy extends Utils {
 	@SuppressWarnings("resource")
 	public static void main(String[] args) throws Exception {
 		SocketProxy sk = new SocketProxy();
+		//配置文件路径，默认加载同目录下的c。conf文件，-f 配置文件路径：可以加载指定路径的配置文件
 		if (args.length == 2 && "-f".equalsIgnoreCase(args[0])) {
 			sk.readConf(true, args[1]);
 		} else {
